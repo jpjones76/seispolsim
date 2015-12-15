@@ -42,6 +42,7 @@ A few scripts have been included in Graphics. These are meant to be better-organ
 
 ### psiplot
 Create intensity plots of polarization similarity. Two plots are generated.
+
 1. Adjacent-time simlarity: For attribute p, average similarity in each time slice t between `H{p}(t,k) H{p}(t,k1~=k)`.
 2. Cross-station similarity: For attribute p, similarity at each station k between `H{p}(t,k), H{p}(t-1,k)`.
 
@@ -50,13 +51,8 @@ Example use: `h = psiplot(X,S,T,fs,L);`
 ###pstfip
 As psiplot, for the output of polsim_modwt. Four sets of intensity plots are created, each with octave scaling on the frequency axis.
 
-####Diagnostic Plots
-Each band has a ragged, overloaded look because they contain K total sets of intensities, stacked vertically. These plots are meant for diagnostic purposes.
-1. Cross-station similarity: For attribute p, similarity at each station k between `H{p}(t,k), H{p}(t-1,k)`, in each set of MODWT coefficients Wj. 
-
-2. Adjacent-time simlarity: For attribute p, max. MODWT level J, average similarity in each time slice t between `H{p}(t,k) H{p}(t,k1~=k)` at each level j of the wavelet transform. 
-
-####Averaged Plots
+1. Cross-station similarity: For attribute p, similarity at each station k between `H{p}(t,k), H{p}(t-1,k)`, in each set of MODWT coefficients Wj. Each band has a ragged, overloaded look because they contain K total sets of intensities, stacked vertically. These plots are meant for diagnostic purposes.
+2. Adjacent-time simlarity: For attribute p, max. MODWT level J, average similarity in each time slice t between `H{p}(t,k) H{p}(t,k1~=k)` at each level j of the wavelet transform. As above, the look is ragged because each band has K sets of intensities.
 3. Averaged cross-station similarity.
 4. Averaged adjacent-time similarity for all stations. As (1), but averaged across all stations considered at each scale j.
 
