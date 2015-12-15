@@ -81,5 +81,6 @@ This project currently has no Apple support for time-frequency analysis.
 Graphics-related routines may have backwards compatibility issues with Matlab < r2014b. 
 
 ## References
-`[1]` Jones, J.P., Eaton, D., and Caffagni, E., 2015, "Quantifying the similarity of seismic polarizations", *GJI, in press*.
-`[2]` Jones, J.P., Eaton, D., and Caffagni, E., 2015, "Quantifying similarity in seismic polarizations", *AGU Fall Meeting*, Paper ID S21B-2694.
+
+1. Jones, J.P., Eaton, D., and Caffagni, E., 2015, "Quantifying the similarity of seismic polarizations", *GJI, in press*.
+2. Jones, J.P., Eaton, D., and Caffagni, E., 2015, "Quantifying similarity in seismic polarizations", *AGU Fall Meeting*, Paper ID S21B-2694.
