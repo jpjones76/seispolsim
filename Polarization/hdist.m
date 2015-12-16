@@ -22,7 +22,6 @@ function D = hdist(H, G, varargin)
 %     p is index to polarization quantity
 %     k is index to station
 %
-%
 % ============================================================
 % Author: Joshua Jones, highly.creative.pseudonym@gmail.com
 % Version: 1.1, 2015-12-13

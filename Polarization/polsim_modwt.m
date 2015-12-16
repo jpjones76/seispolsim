@@ -1,4 +1,4 @@
-function varargout = polsim_modwt(X, J, wlt, dp, fs, varargin)
+function varargout = polsim_modwt(X, J, wlt, fs, varargin)
 % D = polsim_modwt(X,J,wlt,dp);
 %    MODWT for polarization similarity. Returns distance matrix D.
 % 
@@ -19,12 +19,12 @@ function varargout = polsim_modwt(X, J, wlt, dp, fs, varargin)
 %      scaling coefficients in W{J,1}
 % Wd   Wavelet detail coefficients with same structural arrangement as W.
 %
-% DEPENDENCIES: getwlt, modwt, modwtpy, iwpt, seispol, wscaledb,
-% adaptivesim, stalta
+% DEPENDENCIES: getwlt, modwt, modwtpy, iwpt, seispol, wscaledb, polhist, 
+% adaptivesim, stalta, imodwptp
 %
 % ==============================================================
 % Author: Joshua Jones, highly.creative.pseudonym@gmail.com
-% Version: 1.1, Last Modified 2015-12-14
+% Version: 1.1, 2015-12-14
 
 L = fs;
 La = ceil(L/2);
@@ -35,7 +35,7 @@ if numel(varargin) > 0
     end
 end
 
-[Nx, Nc] = size(X);
+Nc = size(X,2);
 [~, Lj] = getwlt(wlt, 1, J);
 X = [X; zeros(max(Lj),Nc)];
 
@@ -48,7 +48,7 @@ P = cell(J,2);
 H = cell(J,2);
 D = cell(J,2);
 
-% Do inverse modwt
+% Do inverse modwt 
 for j = 1:1:J; 
     if j == J
         nmin = 1;
@@ -57,10 +57,9 @@ for j = 1:1:J;
     end
     for n = 2:-1:nmin
         Wd{j,n} = iwpt(W{j,n}, [j n], wlt, 1);
-        [P{j,n}, ~, H{j,n}, D{j,n}, T] = seispol(Wd{j,2}(1:Nx,:), ...
-            'dp', dp, 'L', L, 'La', La, 'av', 1, 'Na', 11, 'fca', 0, ...
-            'hd', 1, 'ht', 1);
-        S{j,n} = adaptivesim(Wd{j,n}, D{j,n}, L, La);
+        [P{j,n}, wgt] = seispol(Wd{j,n});
+        [~, D, T] = polhist(P{j,n}, wgt, 1, 1);
+        S{j,n} = adaptivesim(Wd{j,n}, D, L, La);
     end; 
 end
 

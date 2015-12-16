@@ -8,6 +8,7 @@ setfigdefs;
 figs = {'eq_banff_Sk.eps'; 'eq_banff_St.eps'};
 
 % Labels for plots
+Nk = size(X,2)/3;
 lb = [1 2 4 5 6 7 8 9 10 12];
 lbs = cell(1,Nk);
 for k = 1:1:Nk
@@ -15,6 +16,7 @@ for k = 1:1:Nk
 end
 
 % Polarization similarity
-[P, ~, H, D, T] = seispol(X, 'L', L, 'La', La, 'ht', 1, 'hd', 1);
+[P,W] = seispol(X);
+[H, D, T] = polhist(P,W,1,1);
 S = adaptivesim(X, D, L, La);
 h = psiplot(X, S, T, fs, L, [], lbs);

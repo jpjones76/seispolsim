@@ -1,35 +1,56 @@
 function varargout = polhist(P, W, varargin)
-% H = polhist(P);
+% H = polhist(P,W);
 % [H, D, T] = polhist(P, W, OPTIONS);
 %
 %        Compute histograms for polarization structure P, with weights W.
-% 
+%
 % INPUTS
 % P     Polarization structure with Np fields. Fields must be P.az, P.el,
 %           P.in, P.rc, P.pl, ordered as shown.
 %
 % OUTPUTS
-% H     Histograms for P, a 1 x Np cell structure.
-% D     Histogram distances for P. See below for the structure.
-% T     Times for histogram time slices (only valid with m = 't').
+% H     Energy-weighted histograms of the polarization of X, divided into
+%       bins of normalized width dp. Order matches alphabetical order of
+%       field in P: H{1} = az, H{2} = el, H{3} = in, H{4} = pl, H{5} = rc.
+%
+% D     Histogram distances. For Nk stations (3Nk channels), Nt time
+%       slices, Np attributes, the distance matrix D is size Np(2Nk+1) x Nt.
+%   ROW #       Meaning
+%   1:NkNp          Histogram distances for attribute p, between time
+%               slices i, i-1 (i = 2:Nt). Row order:
+%                           p=1, k=1
+%                           p=1, k=2
+%                               ...
+%                           p=Np, k=Nk-1
+%                           p=Np, k=Nk
+%                   
+%   NkNp+1:         Mean histogram distance between histogram at time t,
+%    2NkNp     station k, and histograms at time t, stations j != k, for
+%               each attribute p
+%                           p=1, k=1        (vs. p=1, k=2:Nk)
+%                           p=1, k=2        (vs. p=1, k=1, 3:Nk)
+%                               ...
+%                           p=Np, k=Nk-1    (vs. p=Np, k=1:Nk-2, k=Nk)
+%                           p=Np, k=Nk      (vs. p=Np, k=1:Nk-1)
+%  2NkNp+1:
+%   Np(2Nk+1)       Mean of all distances between histogram pairs of p at
+%               time t
+%
+% T     Middle sample number of each histogram. Empty unless ht = .%
 %
 % OPTIONS
-%       The following options can be specified. Always specify options as
-% 'name', value pairs, e.g. polhist(P, 'm', 't', 'cs', [1 0 1 0 0])
+%       The following options can be specified. 
 %
 % Name  Default         Type    Meaning
-% m     '1'             str     Mode of histogram calculation:
-%                                '1'    one histogram for each column in P
-%                                't'    time slices of length L, advanced
-%                                       La samples between calculations
+% ts    0               bool     Mode of histogram calculation:
+%                                0      One histogram for each P{p}(:,k)
+%                                1      Histograms of time slices
+% sim   0               bool    Compute histogram similarity? (1 = yes)
 % G     empty cell      cell    1xNp cell structure of ground dist.
 %                                 matrices. Type 'help gdm' for details.
 % L     100             int     Sample length for time slices
 % La    20              int     Advance by La samples between time slices
-% dp    0.01            num     Polarization histogram bin width,
-%                                 normalized (0 < dp < 0.5)
-% hd    0               bool    Compute distances? 1 = 'yes'
-% W     ones            cell    Weights, size 1 x Np cell struct
+% dp    0.01            num     Normalized histogram bin width
 %
 % STRUCTURE OF D
 %   For K stations (3K channels), the distance matrix D is Np(2K+1) x Nt,
@@ -39,48 +60,144 @@ function varargout = polhist(P, W, varargin)
 %   ROW #       Meaning / Ordering
 %   1:KNp       Histogram distance between time slice t and slice t-1 at
 %               each station k for each attribute p
-%                   ORDERING:   r[1-Np]: p=1, k=1:K; ... 
+%                   ORDERING:   r[1-Np]: p=1, k=1:K; ...
 %                               r[(Np-1)*Nk+1:Np*Nk] =  p=Np, k=1:K
 %   KNp+1:2KNp  Mean histogram distance between histogram at time t,
 %               station k, and histograms at time t, stations j != k, for
 %               each attribute p
-%                   ORDERING:   r[1-Np]: p=1, k=1:K; ... 
+%                   ORDERING:   r[1-Np]: p=1, k=1:K; ...
 %                               r[(Np-1)*Nk+1:Np*Nk] =  p=Np, k=1:K
 %   2KNp+1:     Average Dk over all K station pairs for each attribute p
 %     2KNp+Np       ORDERING: p = 1:Np
 % 
+% Dependencies: pexpand, gdm, hdist
+% 
 % ========================================================================
 % Author: Joshua Jones, highly.creative.pseudonym@gmail.com
-% Version: 1.1, 2015-12-14
+% Version: 1.2, 2015-12-16
 
 %% Program defaults
-m   = '1';
+ts  = 0;
+hd  = 0;
 L   = 100;
 La  = 20;
-dp  = 0.01;
-hd  = 0;
-G   = cell(1,5);
+Nb  = 100;
 
 %% Parse varargin
 if numel(varargin) > 0
-    j = 1;
-    while j < numel(varargin)
-        eval([varargin{j} '= varargin{j+1};']);
-        j = j+2;
+    if ~isempty(varargin{1})
+        ts = varargin{1};
+    end
+    if numel(varargin) > 1
+        if ~isempty(varargin{2})
+            hd = varargin{2};
+        end
+        if numel(varargin) > 2
+            if ~isempty(varargin{3})
+                L = varargin{3};
+            end
+            if numel(varargin) > 3
+                if ~isempty(varargin{4})
+                    La = varargin{4};
+                end
+                if numel(varargin) > 4
+                    if iscell(varargin{5})
+                        G = varargin{5};
+                        Nb = size(G{1},1);
+                    elseif ~isempty(varargin{5})
+                        Nb = varargin{5};
+                    end
+                end
+            end
+        end
     end
 end
 
 % Ensure P, W are 3 dimensional
 [P,W] = pexpand(P,W);
 
-%% Call to subroutine
-switch lower(m)
-    case 't'
-        [H, D, T]   = pht(P, W, G, hd, dp, L, La);
-    otherwise
-        [H, D]      = ph1(P, W, G, hd, dp);
-        T           = [];
+% Dependent constants, arrays
+[Nx, ~, Nk] = size(W{1});
+F   = fieldnames(P);
+Np  = numel(F);
+Npk = Np*Nk;
+T   = 1+(0:La:Nx-L);
+Nt  = numel(T);
+dp  = 1/Nb;
+% pov = (L-La)/L;
+% Nt = fix((Nx/L - pov) * (1/(1-pov)));
+
+% Fallback gdm is an identity matrix (will reduce d(qchd) --> d(chi2))
+if ~exist('G','var')
+    pv = ceil(Nb/6);
+    G = gdm(Nb, repmat(pv,1,Np), [1 0 1 0 0]);
 end
+
+% Histogram boundaries
+x0          = 0:dp:1-dp;
+x1          = [x0(2:end) 1];
+rx0         = repmat(x0,[1 1 Nk]);
+rx1         = repmat(x1,[1 1 Nk]);
+
+% Initialization
+H = cell(1,Np);
+if hd && ts
+    D = zeros(2*Npk+Np, Nt);
+elseif hd
+    D = zeros(2*Npk,Nk);
+else
+    D = [];
+end
+
+% Map az, inc to [0, 1]
+if max(max(abs(P.az)),max(abs(P.in))) > 180
+    a0 = 2;
+else
+    a0 = 1;
+end
+P.az = P.az/(a0*180) + 0.5;
+P.in = P.in/(a0*180) + 0.5;
+
+% Compute H, D
+for p = 1:1:Np
+    pol = P.(F{p});
+    if ts
+        j = 0;
+        for t = 0:La:Nx-L
+            j = j+1;
+            H{p}(:,:,j) = squeeze( sum( ...
+                repmat(W{p}(t+1:t+L,:,:),[1 1/dp 1]) .* ...
+                bsxfun(@ge,pol(t+1:t+L,:,:),rx0) .* ...
+                bsxfun(@lt,pol(t+1:t+L,:,:),rx1) ) );
+            if hd && t >= La
+                h0 = squeeze( ...
+                    reshape(H{p}(:,:,[j-1 j]), 1/dp, 2*Nk, 1));
+                d1 = hdist(h0,G{p});
+                
+                % Obtain D_t
+                D(1 + (p-1)*Nk : p*Nk, j) = diag(d1(Nk+1:end,1:Nk));
+                
+                % Obtain average D_k for k1 ~= k
+                du = d1(1:Nk, 1:Nk);
+                D(1+Npk+(p-1)*Nk : Npk+p*Nk, j-1) = sum(du,2)./(Nk-1);
+                
+                % Obtain average D_k over all Nk*(Nk-1)/2 pairs
+                D((2*Npk) + p, j-1) = mean(du(triu(du)~=0));
+            end
+        end
+    else
+        H{p} = squeeze(sum(repmat(W{p},[1 1/dp 1]).* ...
+            bsxfun(@ge,pol,rx0) .* bsxfun(@lt,pol,rx1),1));
+        H{p}(isnan(H{p})) = 0;
+        if hd
+            D(1+Npk+(p-1)*Nk : Npk+p*Nk, :) = hdist(H{p}, G{p});
+        end
+    end
+end
+
+% Remap az, in to [-90, 90] or [-180, 180]
+P.az = a0*180*(P.az-0.5);
+P.in = a0*180*(P.in-0.5);
 
 %% Parse varargout
 varargout{1} = H;
@@ -88,97 +205,5 @@ if nargout > 1
     varargout{2} = D;
     if nargout > 2
         varargout{3} = T;
-    end
-end
-
-% ================================================================
-function [H, D, T] = pht(P, W, G, d, dp, L, La)
-F           = fieldnames(P);
-Np          = numel(F);             % # pol parameters
-T           = [];                   % Time
-x0          = 0:dp:1-dp;            % Left histogram border
-x1          = [x0(2:end) 1];        % Right histogram border
-D           = [];                   % Distances
-[Nx, ~, Nk] = size(W{1});
-Npk         = Np*Nk;
-rx0         = repmat(x0,[1 1 Nk]);
-rx1         = repmat(x1,[1 1 Nk]);
-
-pov = (L-La)/L;
-Nt = fix((Nx/L - pov) * (1/(1-pov)));
-if d
-    D = zeros(2*Npk, Nt);
-end
-
-% Compute H
-for p = 1:1:Np
-    pol = P.(F{p});
-    j = 0;    
-    for t = 0:La:Nx-L
-        j = j+1;
-        T(j) = t+1;
-        H{p}(:,:,j) = squeeze( sum( ...
-            repmat(W{p}(t+1:t+L,:,:),[1 1/dp 1]) .* ...
-            bsxfun(@ge,pol(t+1:t+L,:,:),rx0) .* ...
-            bsxfun(@lt,pol(t+1:t+L,:,:),rx1) ) );
-        if d && t >= La
-            h0 = squeeze( ...
-                reshape(H{p}(:,:,[j-1 j]), 1/dp, 2*Nk, 1));
-            d1 = hdist(h0,G{p});
-            
-            % Obtain D_t
-            D(1 + (p-1)*Nk : p*Nk, j) = diag(d1(Nk+1:end,1:Nk));
-            
-            % All cross-station distances lag j by 1 unit; note change
-            % of variable to time j-1 to compensate
-            du = d1(1:Nk, 1:Nk);
-            
-            % Obtain average D_k between k, k1 ~= k
-            D(Npk + 1 + (p-1)*Nk : Npk + p*Nk, j-1) = ...
-                sum(du,2)./(Nk-1);
-            
-            % Obtain average D_k over all Nk*(Nk-1)/2 pairs
-            D((2*Npk) + p, j-1) = ...
-                mean(du(triu(du)~=0));
-        end
-    end
-    if d
-        D(1+(p-1)*Nk:p*Nk, 1) = D(1+(p-1)*Nk:p*Nk,2);
-        
-        % This copies 2nd-last distances to last distances.
-        D(Npk + 1 + (p-1)*Nk : Npk + p*Nk, j) = ...
-            D(Npk + 1 + (p-1)*Nk : Npk + p*Nk, j-1);
-    end
-end
-
-
-% ================================================================
-function [H, D] = ph1(P, W, G, d, dp)
-
-F   = fieldnames(P);
-Nk  = size(P.az, 3);
-Np  = numel(F);
-B   = 0:dp:1;
-wh  = cell(Np);
-
-H = cell(1,5);
-if d; D = cell(1,5); end
-for p = 1:1:Np
-    pol = P.(F{p});
-    wt = W{p};
-    for k = 1:Nk
-        Wn = wt(:,:,k);
-        for j = 1:1:numel(B)-1
-            i = pol(:,:,k) >= B(j) & ...
-                pol(:,:,k) <  B(j+1);
-            wh{p}(j,1) = sum(Wn(i));
-            clear i
-        end
-        H{p}(:,k) = wh{p};
-    end
-   H{p}(isnan(H{p})) = 0;
-    if d
-        D{p} = hdist(H{p},G{p});
-        D{p}(isnan(D{p})) = 0;
     end
 end

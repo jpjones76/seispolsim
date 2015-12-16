@@ -20,7 +20,7 @@ function varargout = vpol(X, varargin)
 % az   Azimuth      [-90, 90]   [-180, 180]
 % in   Incidence    [-90, 90]   [-180, 180]
 % 
-% NOTE: Standalone - not called by anything else!
+% Standalone
 %
 % ======================================================
 % Author: Joshua Jones, highly.creative.pseudonym@gmail.com

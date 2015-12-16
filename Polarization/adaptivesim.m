@@ -1,20 +1,20 @@
-function S = adaptivesim(X, D, L, La, varargin)
+function S = adaptivesim(X, D, L, La)
 % S = adaptivesim(X, D, L, La);
 % 
 %   Convert distances in cell structure D adaptive similarities using
 % STA/LTA ratios of X, where D measures average histogram distance between
 % each station k and each station k1 ~= k.
 % 
-% S = adaptivesim(X, D, L, La, t);
+% S = adaptivesim(X, D, L, La);
 %
 %   Specify t=1 to if using distances computed between adjacent time 
 % slice histograms at each station (affects the STA/LTA calculation).
 %
-% Dependencies: stalta.m, Dcorr.mat
+% Dependencies: stalta, Dcorr.mat
 %
 % ======================================================
 % Author: Joshua Jones, highly.creative.pseudonym@gmail.com
-% Version: 1.4, 2015-12-15
+% Version: 1.4.1, 2015-12-16
 
 % Required: Data, dist, type
 [Nx,Nk] = size(X);
@@ -33,15 +33,15 @@ load('Dcorr.mat','SN','DmaxA','DminA');
 
 %% STA-LTA ratios
 if isreal(X) && min(X(:))<0
-    EX = abs(hilbert(X));
+    X = abs(hilbert(X));
 end
-Rk = stalta(mean(EX,2), L, Lw, La);
+Rk = stalta(mean(X,2), L, Lw, La);
 
-EX1 = zeros(Nx, Nk);
+Xs = zeros(Nx, Nk);
 for k = 1:1:Nk
-    EX1(:,k) = sum(EX(:,3*k-2:3*k),2);
+    Xs(:,k) = sum(X(:,3*k-2:3*k),2);
 end
-Rt = stalta(EX1, L, Lw, La);
+Rt = stalta(Xs, L, Lw, La);
 
 %% Convert D to adaptive similarity
 for p = 1:1:5

@@ -21,6 +21,8 @@ function [az, in, pl, rc, W] = jpol(X, N, varargin)
 % rc   Rectilinearity   [0, 1]
 % pl   Planarity        [0, 1]
 %
+% % Standalone
+%
 % ======================================================
 % Author: Joshua Jones, highly.creative.pseudonym@gmail.com
 % Version: 1.1, 2015-12-10
