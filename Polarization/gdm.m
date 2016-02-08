@@ -48,6 +48,7 @@ end
 
 G = cell(1,Np);
 for p = 1:1:Np
+    t = min([T(p) floor(N/2)-1]);
     switch lower(F{p})
       case 'eye'
         G{p} = eye(N);
@@ -73,24 +74,41 @@ for p = 1:1:Np
                 end
             end
         end
-      
+      case 'hann'
+          if ~rem(t,2); t = t-1; end
+          g = [hann(2*t+1); zeros(N-2*t-1,1)];
+          A = zeros(N);
+          C = zeros(N);
+          for a = 1:1:N
+              rmin = max([1 a-N+t+1]);
+              rmax = min([N a+N-t-1]);
+              C(:,a) = circshift(g,[-t+a-1 0]);
+              A(rmin:rmax,a) = C(rmin:rmax,a);
+          end
+          if P(p)
+              G{p} = C;
+          else
+              G{p} = A;
+          end
+          
       % Default: Gaussian
-      otherwise
-        G{p} = zeros(N);
-        if P(p)
-            g = [normpdf(-T(p):1:T(p),0,T(p)/3) ...
-                 zeros(1,N-2*T(p)-1)];
-            g = g./max(g);
-            g = circshift(g,[0 -T(p)]);
+        otherwise
+            H = exp(-0.5.*(3*colon(-t,t)./t).^2)./((t/3)*sqrt(2*pi));
+            M = numel(H);
+            H = [H'./sum(H); zeros(N-M,1)];
+            A = zeros(N);
+            C = zeros(N);
+            g = [H./max(H); zeros(N-numel(H),1)];
             for a = 1:1:N
-                G{p}(a,:) = circshift(g,[0 a-1]);
+                rmin = max([1 a-N+t+1]);
+                rmax = min([N a+N-t-1]);
+                C(:,a) = circshift(g,[-t+a-1 0]);
+                A(rmin:rmax,a) = C(rmin:rmax,a);
             end
-        else
-            for a = 1:1:N
-                b1 = max([1 a-T(p)+1]);
-                b2 = min([N a+T(p)-1]);
-                g = normpdf(b1:1:b2,a,floor(T(p)/3));
-                G{p}(a,b1:b2) = g./max(g);
+            if P(p)
+                G{p} = C;
+            else
+                G{p} = A;
             end
         end
     end

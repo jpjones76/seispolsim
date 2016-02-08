@@ -1,11 +1,13 @@
 function varargout = vpol(X, varargin)
+% vpol: Standalone implementation of Vidale's polarization attributes
+%
 % [az, el, in] = vpol(X, fca, z);
-%   Standalone to compute Vidale (1986) instantaneous polarization
-% attributes (azimuth, ellipticity, and incidence). Returns column vectors,
-% one column per station.
+%
+%   Compute instantaneous azimuth, ellipticity, and incidence. Returns
+% column vectors, one column per station.
 %
 % [az, el, in, W] = vpol(X, z, fca);
-%   Also return the summed energies of X as weights W
+%   Also return summed energies of X as weights W.
 %
 % REQUIRED INPUT
 % X     3c seismic data arranged [Z_1 N_1 E_1 Z_2 N_2 E_2 ... Z_K N_K E_K]
@@ -15,12 +17,13 @@ function varargout = vpol(X, varargin)
 % z     Row vector of complex phase angles in degrees (default = 1:1:180)
 %
 % OUTPUTS           RANGE
-%                   fca = 0     fca = 1
 % el   Ellipticity  [0, 1]      [0, 1]
 % az   Azimuth      [-90, 90]   [-180, 180]
 % in   Incidence    [-90, 90]   [-180, 180]
-% 
-% Standalone
+%                   (fca = 0)   (fca = 1)
+%
+% Reference: Vidale, J. E. (1986). Complex polarization analysis of
+% particle motion: Bull. Seismol. Soc. Am. 76, 1393-1405.
 %
 % ======================================================
 % Author: Joshua Jones, highly.creative.pseudonym@gmail.com

@@ -1,10 +1,12 @@
 function Y = rotseis(varargin)
-% Y = rotseis(X, phi, lr);
+% Y = rotseis(X, Az);
 % 
-% Rotate 3 component seismograms X into azimuth phi.
+% Rotate matrix of 3 component seismograms X into aziuth vector Az.
 %
 % X should have column vectors arranged [Z_1 N_1 E_1 Z_2 ... Z_K N_K E_K]
-% for a K-sensor array. Treat down as +Z
+% for a K-sensor array. Treat +Z as down.
+%
+% For a K-sensor array, if data have Nx samples, X should be size [Nx, K/3]
 %
 % =====================================================================
 % Author: Joshua Jones, highly.creative.pseudonym@gmail.com

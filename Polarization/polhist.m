@@ -1,6 +1,7 @@
 function varargout = polhist(P, W, varargin)
 % H = polhist(P,W);
-% [H, D, T] = polhist(P, W, OPTIONS);
+% [H, D, T] = polhist(P, W, ts, hd, L, La, G);
+% [H, D, T] = polhist(P, W, ts, hd, L, La, Nb);
 %
 %        Compute histograms for polarization structure P, with weights W.
 %
@@ -36,7 +37,7 @@ function varargout = polhist(P, W, varargin)
 %   Np(2Nk+1)       Mean of all distances between histogram pairs of p at
 %               time t
 %
-% T     Middle sample number of each histogram. Empty unless ht = .%
+% T     Starting sample number of each histogram. Empty unless ht = .%
 %
 % OPTIONS
 %       The following options can be specified. 
@@ -50,7 +51,7 @@ function varargout = polhist(P, W, varargin)
 %                                 matrices. Type 'help gdm' for details.
 % L     100             int     Sample length for time slices
 % La    20              int     Advance by La samples between time slices
-% dp    0.01            num     Normalized histogram bin width
+% Nb    100             int     Bins per histogram
 %
 % STRUCTURE OF D
 %   For K stations (3K channels), the distance matrix D is Np(2K+1) x Nt,
@@ -127,10 +128,8 @@ dp  = 1/Nb;
 % pov = (L-La)/L;
 % Nt = fix((Nx/L - pov) * (1/(1-pov)));
 
-% Fallback gdm is an identity matrix (will reduce d(qchd) --> d(chi2))
-if ~exist('G','var')
-    pv = ceil(Nb/6);
-    G = gdm(Nb, repmat(pv,1,Np), [1 0 1 0 0]);
+if hd && ~exist('G','var')
+    G = gengdm(Nb);
 end
 
 % Histogram boundaries
@@ -150,17 +149,13 @@ else
 end
 
 % Map az, inc to [0, 1]
-if max(max(abs(P.az)),max(abs(P.in))) > 180
-    a0 = 2;
-else
-    a0 = 1;
-end
-P.az = P.az/(a0*180) + 0.5;
-P.in = P.in/(a0*180) + 0.5;
+P.az = P.az/180 + 0.5;
+P.in = P.in/90;
 
 % Compute H, D
 for p = 1:1:Np
     pol = P.(F{p});
+    pol(pol==1) = 1-eps;
     if ts
         j = 0;
         for t = 0:La:Nx-L
@@ -172,7 +167,7 @@ for p = 1:1:Np
             if hd && t >= La
                 h0 = squeeze( ...
                     reshape(H{p}(:,:,[j-1 j]), 1/dp, 2*Nk, 1));
-                d1 = hdist(h0,G{p});
+                d1 = hdist(h0, G{p});
                 
                 % Obtain D_t
                 D(1 + (p-1)*Nk : p*Nk, j) = diag(d1(Nk+1:end,1:Nk));
@@ -187,7 +182,8 @@ for p = 1:1:Np
         end
     else
         H{p} = squeeze(sum(repmat(W{p},[1 1/dp 1]).* ...
-            bsxfun(@ge,pol,rx0) .* bsxfun(@lt,pol,rx1),1));
+                       bsxfun(@ge,pol,rx0) .* ...
+                       bsxfun(@lt,pol,rx1),1));
         H{p}(isnan(H{p})) = 0;
         if hd
             D(1+Npk+(p-1)*Nk : Npk+p*Nk, :) = hdist(H{p}, G{p});
@@ -195,9 +191,16 @@ for p = 1:1:Np
     end
 end
 
-% Remap az, in to [-90, 90] or [-180, 180]
-P.az = a0*180*(P.az-0.5);
-P.in = a0*180*(P.in-0.5);
+% Check for single-station case with ts = 1 (squeeze is inconsistent)
+if Nk == 1 & ts
+    for p = 1:1:5
+        H{p} = permute(H{p},[2 1 3]);
+    end
+end
+
+% Remap az, in
+P.az = 180*(P.az-0.5);
+P.in = P.in*90;
 
 %% Parse varargout
 varargout{1} = H;
@@ -207,3 +210,31 @@ if nargout > 1
         varargout{3} = T;
     end
 end
+
+% ========================================================================
+function D = hdist(H, G)
+% D = hdist(H,G,OPTIONS);
+%   Measure qchd of histograms in matrix/structure H.
+%
+% INPUTS
+% G     Ground distance matrix.
+% H     Matrix of histograms in column vectors.
+%
+% OUTPUTS
+% D   Distances between all pairs in H.
+%
+% ============================================================
+% Author: Joshua Jones, highly.creative.pseudonym@gmail.com
+% Version: 1.2, 2016-01-28
+
+[Nb, Nh] = size(H);
+D = zeros(Nh);
+H = 0.5*H./repmat(sum(H,1),Nb,1);
+H(H<eps) = eps;
+i0 = 0;
+for j = 1:1:Nh-1
+    i1 = i0+Nh-j;
+    D(j+1:Nh,j) = qchd(repmat(H(:,j),1,Nh-j), H(:,j+1:Nh), G);
+    i0 = i1;
+end
+D = D + D';

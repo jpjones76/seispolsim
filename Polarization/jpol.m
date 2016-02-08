@@ -1,15 +1,18 @@
 function [az, in, pl, rc, W] = jpol(X, N, varargin)
+% jpol: Standalone implementation of Jurkevics' polarization attributes
+%
 % [az, in, pl, rc] = jpol(X, N);
 %
-%   Compute Jurkevics' time-averaged polarization attributes. Return
-% planarity and rectilinearity as column vectors, one column per station.
-% An N-point moving average filter is used to stabilize the calculations.
+%   Compute time-averaged polarization attributes. Return planarity and
+% rectilinearity as column vectors, one column per station. An N-point
+% moving average filter is used to stabilize the calculations.
+%
 %
 % [az, in, pl, rc] = jpol(X, N, fca);
 %   Set fca to 1 to resolve 180 degree ambiguity in az, in using atan2d
 % 
 % [az, in, pl, rc, W] = vpol(X, z, fca);
-%   Also return summed energies of X as weights W
+%   Also return summed energies of X as weights W.
 %
 % REQUIRED INPUT
 % X     3c seismic data arranged [Z_1 N_1 E_1 Z_2 N_2 E_2 ... Z_K N_K E_K]
@@ -21,7 +24,8 @@ function [az, in, pl, rc, W] = jpol(X, N, varargin)
 % rc   Rectilinearity   [0, 1]
 % pl   Planarity        [0, 1]
 %
-% % Standalone
+% Reference: Jurkevics, A., (1988). Polarization analysis of
+% three-component array data: Bull. Seismol. Soc. Am. 78, 1725-1743.
 %
 % ======================================================
 % Author: Joshua Jones, highly.creative.pseudonym@gmail.com
@@ -69,7 +73,7 @@ for k = 1:1:Nk
         
         % Weight
         if m > os && m <= Nx-os
-            W(m-os,1,k) = C(1) + C(5) + C(9);
+            W(m-os,1,k) = C(m,1) + C(m,5) + C(m,9);
         end
     end
 end
